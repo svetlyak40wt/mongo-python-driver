@@ -187,6 +187,114 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.skip, 5)
 
+    def test_slice_with_skip(self):
+        from itertools import izip, count
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(100):
+            db.test.save({"x": i})
+
+        for i, v in izip(count(0), db.test.find()):
+            self.assertEqual(v["x"], i)
+
+        for i, v in izip(count(20), db.test.find()[20:]):
+            self.assertEqual(v["x"], i)
+
+        for i, v in izip(count(99), db.test.find()[99:]):
+            self.assertEqual(v["x"], i)
+
+        for i, v in izip(count(1), db.test.find()[1:]):
+            self.assertEqual(v["x"], i)
+
+        for i, v in izip(count(0), db.test.find()[0:]):
+            self.assertEqual(v["x"], i)
+
+        for i, v in izip(count(60), db.test.find()[0:][50:][10:]):
+            self.assertEqual(v["x"], i)
+
+        for i in db.test.find()[1000:]:
+            self.fail()
+
+    def test_slice_with_limit(self):
+        from itertools import izip, count
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(100):
+            db.test.save({"x": i})
+
+        for i, v in izip(count(0), db.test.find()):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[20:25]
+        self.assertEqual(len(result), 5)
+
+        for i, v in izip(count(20), result):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[99:100]
+        self.assertEqual(len(result), 1)
+
+        for i, v in izip(count(99), result):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[1:11]
+        self.assertEqual(len(result), 10)
+
+        for i, v in izip(count(1), result):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[0:10]
+        self.assertEqual(len(result), 10)
+
+        for i, v in izip(count(0), result):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[10:50][25:100]
+        self.assertEqual(len(result), 15)
+
+        for i, v in izip(count(35), result):
+            self.assertEqual(v["x"], i)
+
+
+        result = db.test.find()[20:50][0:10]
+        self.assertEqual(len(result), 10)
+
+        for i, v in izip(count(20), result):
+            self.assertEqual(v["x"], i)
+
+
+        for i in db.test.find()[1000:10]:
+            self.fail()
+
+    def test_get_single_item(self):
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(100):
+            db.test.save({"x": i})
+
+        result = db.test.find()
+        self.assertEqual(result[0]['x'], 0)
+        self.assertEqual(result[50]['x'], 50)
+        self.assertEqual(result[99]['x'], 99)
+
+    def test_length(self):
+        from itertools import izip, count
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(10):
+            db.test.save({"x": i})
+
+        self.assertEqual(len(db.test.find()), 10)
+
     def test_sort(self):
         db = self.db
 

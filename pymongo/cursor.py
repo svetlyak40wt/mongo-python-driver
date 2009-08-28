@@ -61,6 +61,8 @@ class Cursor(object):
         self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False
+        self.__left_bound = 0
+        self.__right_bound = 100000
 
     def __del__(self):
         if self.__id and not self.__killed:
@@ -181,6 +183,30 @@ class Cursor(object):
         self.__skip = skip
         return self
 
+    def __getitem__(self, index):
+        """Applies skip and limit, when cursor[2:10] notation is used."""
+        self.__check_okay_to_chain()
+
+        if isinstance(index, slice):
+            if index.stop is not None:
+                self.__right_bound = min(self.__right_bound, self.__left_bound + index.stop)
+
+            if index.start is not None:
+                self.__left_bound += index.start
+
+            self.skip(self.__left_bound)
+            self.limit(self.__right_bound - self.__left_bound)
+            return self
+
+        clone = self.clone()
+        clone.skip(index)
+        clone.limit(1)
+        obj = list(clone)
+        if len(obj) != 1:
+            raise IndexError
+        return obj[0]
+
+
     def sort(self, key_or_list, direction=None):
         """Sorts this cursor's results.
 
@@ -217,6 +243,10 @@ class Cursor(object):
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
+
+    def __len__(self):
+        total = self.count()
+        return min(total, self.__limit or total)
 
     def explain(self):
         """Returns an explain plan record for this cursor.
